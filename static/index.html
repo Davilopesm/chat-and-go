@@ -1,27 +1,38 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>WebSocket Chat</title>
+		<title>Chat and GO</title>
+		<link rel="stylesheet" href="static/styles.css" />
+		<script
+			src="https://unpkg.com/htmx.org@1.9.10"
+			integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
+			crossorigin="anonymous"
+		></script>
 	</head>
 	<body>
-		<div>
-			<textarea
-				id="chatOutput"
-				style="width: 100%"
-				rows="10"
-				disabled
-			></textarea>
-		</div>
-		<div>
-			<input type="text" id="messageInput" placeholder="Type a message" />
-			<button onclick="sendMessage()">Send</button>
+		<div class="chat-container">
+			<div id="chatOutput" class="chat-output"></div>
+			<div class="chat-input">
+				<form
+					hx-post="/send"
+					hx-trigger="submit"
+					onsubmit="return sendMessage()"
+				>
+					<input
+						type="text"
+						id="messageInput"
+						name="message"
+						placeholder="Type a message"
+						required
+					/>
+					<button type="submit">Send</button>
+				</form>
+			</div>
 		</div>
 
 		<script>
-			// WebSocket setup
 			const ws = new WebSocket("ws://localhost:3000/ws");
 
 			ws.addEventListener("open", (event) => {
@@ -29,11 +40,9 @@
 			});
 
 			ws.addEventListener("message", (event) => {
-				// Display the received message in the chat output
-				const chatOutput = document.getElementById("chatOutput");
-				chatOutput.value += event.data + "\n";
+				const chatContent = document.getElementById("chatOutput");
+				chatContent.innerHTML += event.data + "<br>";
 			});
-
 			ws.addEventListener("close", (event) => {
 				console.log("WebSocket connection closed:", event);
 			});
@@ -42,19 +51,43 @@
 				console.error("WebSocket error:", event);
 			});
 
-			// Function to send a message
 			function sendMessage() {
 				const messageInput = document.getElementById("messageInput");
 				const message = messageInput.value;
 
 				if (message.trim() !== "") {
-					// Send the message to the server
 					ws.send(message);
-
-					// Clear the input field
 					messageInput.value = "";
 				}
 			}
 		</script>
 	</body>
 </html>
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Chat and GO</title>
+		<link rel="stylesheet" href="static/styles.css" />
+		<script
+			src="https://unpkg.com/htmx.org@1.9.10"
+			integrity="sha384-D1Kt99CQMDuVetoL1lrYwg5t+9QdHe7NLX/SoJYkXDFfX37iInKRy5xLSi8nO7UC"
+			crossorigin="anonymous"
+		></script>
+		<script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
+	</head>
+
+	<body>
+		<div hx-ext="ws" ws-connect="ws://localhost:3000/ws">
+			<div id="chatOutput" class="chat-output"></div>
+			<div class="chat-input">
+				<form id="form" ws-send>
+					<input name="chat_message" />
+					<button type="submit">Send</button>
+				</form>
+			</div>
+		</div>
+	</body>
+</html> -->

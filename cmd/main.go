@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"sync"
 	"text/template"
@@ -12,13 +13,13 @@ import (
 )
 
 type Server struct {
-	connections map[*websocket.Conn]bool
+	connections map[*websocket.Conn]string
 	mutex       sync.Mutex
 }
 
 func NewServer() *Server {
 	return &Server{
-		connections: make(map[*websocket.Conn]bool),
+		connections: make(map[*websocket.Conn]string),
 	}
 }
 
@@ -26,7 +27,8 @@ func (server *Server) handleWebSocket(ws *websocket.Conn) {
 	fmt.Println("Connection request received", ws.RemoteAddr())
 
 	server.mutex.Lock()
-	server.connections[ws] = true
+	username := fmt.Sprintf("user%d", rand.Intn(1000))
+	server.connections[ws] = username
 	server.mutex.Unlock()
 
 	server.readLoop(ws)
@@ -45,14 +47,15 @@ func (server *Server) readLoop(ws *websocket.Conn) {
 			continue
 		}
 		message := buf[:n]
-		server.broadcast(message)
+		server.broadcast([]byte(string(server.connections[ws]) + ": " + string(message)))
 	}
 }
 
-func (server *Server) broadcast(b []byte) {
+func (server *Server) broadcast(message []byte) {
 	for ws := range server.connections {
 		go func(ws *websocket.Conn) {
-			if _, err := ws.Write(b); err != nil {
+			if _, err := ws.Write(message); err != nil {
+				fmt.Println("Error: ", string(message))
 				fmt.Println("Error: ", err)
 			}
 		}(ws)
@@ -72,7 +75,10 @@ func ServeHTML(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	server := NewServer()
+
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	http.HandleFunc("/", ServeHTML)
+
 	http.Handle("/ws", websocket.Handler(server.handleWebSocket))
 	http.ListenAndServe(":3000", nil)
 }
